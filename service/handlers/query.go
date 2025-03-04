@@ -9,7 +9,7 @@ import (
 )
 
 // Queries Ollama with the chosen model and prompt
-func QueryOllama(model string, prompt string) (string, error) {
+func QueryOllama(model string, prompt string) (string, int, error) {
 	apiURL := "http://localhost:11434/api/generate"
 
 	// Create request payload
@@ -22,21 +22,30 @@ func QueryOllama(model string, prompt string) (string, error) {
 	// Send HTTP request
 	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
-		return "", fmt.Errorf("failed to reach Ollama API: %v", err)
+		return "", 0, fmt.Errorf("failed to reach Ollama API: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// ✅ Fix: Replace ioutil with io.ReadAll
+	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
+		return "", 0, fmt.Errorf("failed to read response body: %v", err)
 	}
 
+	// Parse JSON response
 	var response map[string]interface{}
-	json.Unmarshal(body, &response)
-
-	if val, ok := response["response"].(string); ok {
-		return val, nil
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", 0, fmt.Errorf("failed to parse JSON response: %v", err)
 	}
-	return "Error processing response", nil
+
+	// Extract response text
+	textResponse, _ := response["response"].(string)
+
+	// Extract token count if available
+	tokensUsed := 0
+	if val, ok := response["tokens_used"].(float64); ok {
+		tokensUsed = int(val)
+	}
+
+	return textResponse, tokensUsed, nil
 }
