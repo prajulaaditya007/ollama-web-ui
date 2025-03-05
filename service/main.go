@@ -24,6 +24,7 @@ func main() {
 
 	// Route for querying Ollama
 	router.POST("/query", handlers.HandleQuery)
+	router.GET("/models", handlers.HandleListModels)
 
 	fmt.Println("Server running on :8080")
 	log.Fatal(router.Run(":8080"))

@@ -11,6 +11,11 @@ import {
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from 'rehype-raw';
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import dracula from "react-syntax-highlighter/dist/esm/styles/prism/dracula"; // Corrected import
 
 interface Props {
   model: string;
@@ -18,7 +23,11 @@ interface Props {
 
 const ChatBox: React.FC<Props> = ({ model }) => {
   const [input, setInput] = useState("");
-  const [response, setResponse] = useState<any>(null);
+  const [response, setResponse] = useState<{
+    response: string;
+    model: string;
+    time_taken?: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSend = async () => {
@@ -41,6 +50,28 @@ const ChatBox: React.FC<Props> = ({ model }) => {
     return minutes > 0
       ? `${minutes} minute${minutes > 1 ? "s" : ""} ${remainingSeconds} second${remainingSeconds > 1 ? "s" : ""}`
       : `${remainingSeconds} second${remainingSeconds > 1 ? "s" : ""}`;
+  };
+
+  const renderCodeBlock: React.FC<any> = ({
+    className,
+    children,
+    ...props
+  }) => {
+    const match = className ? /language-(\w+)/.exec(className) : null;
+    const language = match ? match[1] : "";
+    const value = String(children).replace(/\n$/, '');
+
+    return (
+      <div style={{ position: "relative" }}>
+        <SyntaxHighlighter language={language} style={dracula} children={value} {...props} />
+        <IconButton
+          onClick={() => copyToClipboard(value)}
+          style={{ position: "absolute", top: "5px", right: "5px", zIndex: 1, color: "white" }}
+        >
+          <ContentCopyIcon />
+        </IconButton>
+      </div>
+    );
   };
 
   return (
@@ -78,10 +109,14 @@ const ChatBox: React.FC<Props> = ({ model }) => {
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               Response:
             </Typography>
-            <Typography variant="body1">{response.response}</Typography>
-            <IconButton onClick={() => copyToClipboard(response.response)}>
-              <ContentCopyIcon />
-            </IconButton>
+            <ReactMarkdown
+              children={response.response}
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
+              components={{
+                code: renderCodeBlock,
+              }}
+            />
             <Typography
               variant="caption"
               display="block"

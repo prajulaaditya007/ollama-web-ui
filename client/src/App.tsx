@@ -7,7 +7,7 @@ import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 
 const App: React.FC = () => {
-    const [model, setModel] = useState("qwen2.5-coder:1.5b");
+    const [model, setModel] = useState("");
 
     return (
         <Container maxWidth="lg">
