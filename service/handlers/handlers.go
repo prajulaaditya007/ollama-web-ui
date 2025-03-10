@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,9 +18,12 @@ type ModelsResponse struct {
 
 // Request structure from frontend
 type QueryRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
+	Model        string `json:"model"`
+	Prompt       string `json:"prompt"`
+	History      bool   `json:"history"`
+	PriorResponse string `json:"prior_response,omitempty"`
 }
+
 
 // Response structure to frontend
 type QueryResponse struct {
@@ -67,20 +71,26 @@ func HandleQuery(c *gin.Context) {
 		return
 	}
 
+	// Modify prompt based on history
+	finalPrompt := req.Prompt
+	if req.History {
+		finalPrompt = fmt.Sprintf("Based on this conversation history:\n%s\n\nAnswer for: %s", req.PriorResponse, req.Prompt)
+	}
+
 	// Start timer
 	startTime := time.Now()
 
 	// Call QueryOllama from query.go
-	ollamaResponse, tokensUsed, err := QueryOllama(req.Model, req.Prompt)
+	ollamaResponse, tokensUsed, err := QueryOllama(req.Model, finalPrompt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get response from model"})
 		return
 	}
 
-	// Calculate API response time
+	// Calculate response time
 	elapsedTime := time.Since(startTime).Seconds()
 
-	// Send updated response
+	// Send response
 	c.JSON(http.StatusOK, QueryResponse{
 		Model:      req.Model,
 		Response:   ollamaResponse,

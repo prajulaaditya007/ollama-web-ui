@@ -12,40 +12,30 @@ import (
 func QueryOllama(model string, prompt string) (string, int, error) {
 	apiURL := "http://localhost:11434/api/generate"
 
-	// Create request payload
 	requestBody, _ := json.Marshal(map[string]interface{}{
 		"model":  model,
 		"prompt": prompt,
 		"stream": false,
 	})
 
-	// Send HTTP request
 	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to reach Ollama API: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	// Parse JSON response
 	var response map[string]interface{}
 	if err := json.Unmarshal(body, &response); err != nil {
-		return "", 0, fmt.Errorf("failed to parse JSON response: %v", err)
+		return "", 0, fmt.Errorf("failed to parse response JSON: %v", err)
 	}
 
-	// Extract response text
-	textResponse, _ := response["response"].(string)
+	text, _ := response["response"].(string)
+	tokens, _ := response["tokens_used"].(int)
 
-	// Extract token count if available
-	tokensUsed := 0
-	if val, ok := response["tokens_used"].(float64); ok {
-		tokensUsed = int(val)
-	}
-
-	return textResponse, tokensUsed, nil
+	return text, tokens, nil
 }

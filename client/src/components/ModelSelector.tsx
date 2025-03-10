@@ -5,6 +5,7 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
 import Link from "@mui/material/Link";
+import axios from "axios";
 
 interface Props {
   model: string;
@@ -18,8 +19,8 @@ const ModelSelector: React.FC<Props> = ({ model, setModel }) => {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const response = await fetch("http://localhost:8080/models");
-        const data = await response.json();
+        const response = await axios.get("http://localhost:8080/models");
+        const data = response.data;
         setModels(data.models);
       } catch (error) {
         console.error("Error fetching models:", error);
@@ -37,7 +38,7 @@ const ModelSelector: React.FC<Props> = ({ model, setModel }) => {
 
   if (models.length === 0) {
     return (
-      <Typography>
+      <Typography sx={{ m: 1 }}>
         No model has been installed. Please install an LLM.{" "}
         <Link href="https://ollama.com/" target="_blank" rel="noopener">
           Here's a link to Ollama
