@@ -15,16 +15,19 @@ func main() {
 
 	// ✅ Enable CORS
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // Allow frontend origin
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
+  AllowOrigins:     []string{"*"},
+  AllowMethods:     []string{"GET", "POST", "OPTIONS"},
+  AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+  ExposeHeaders:    []string{"Content-Length"},
+  AllowCredentials: true,
+}))
+
 
 	// Route for querying Ollama
 	router.POST("/query", handlers.HandleQuery)
 	router.GET("/models", handlers.HandleListModels)
+	router.POST("/query-stream", handlers.HandleQueryStream)
+
 
 	fmt.Println("Server running on :8080")
 	log.Fatal(router.Run(":8080"))

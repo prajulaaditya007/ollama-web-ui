@@ -1,21 +1,17 @@
-import React, { useState } from "react";
-import { queryModel } from "../api";
+import React, { useState, useRef } from "react";
 import {
-  TextField,
+  Box,
   Button,
   Paper,
-  Typography,
-  Box,
   Stack,
-  IconButton,
+  TextField,
+  Typography,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { streamModel } from "../api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import dracula from "react-syntax-highlighter/dist/esm/styles/prism/dracula";
 
 interface Message {
   role: "user" | "model";
@@ -31,97 +27,83 @@ interface Props {
 const ChatBox: React.FC<Props> = ({ model }) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 👇 helper to always scroll to bottom when new content
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]); // Add user question to chat
-    setInput(""); // Clear input field
-
+    if (!input.trim() || !model) return;
     setError(null);
+
+    // Add user message
+    setMessages((prev) => [...prev, { role: "user", content: input }]);
+    setLoading(true);
+    setInput("");
+
+    // Add model message placeholder
+    setMessages((prev) => [
+      ...prev,
+      { role: "model", content: "", model: model },
+    ]);
+    scrollToBottom();
+
     try {
-      const result = await queryModel(model, input);
-      const modelMessage: Message = {
-        role: "model",
-        content: result.response,
-        model: result.model,
-        time_taken: result.time_taken,
-      };
-      setMessages((prev) => [...prev, modelMessage]); // Append model response
+      // Streaming reader
+      const reader = await streamModel(model, input, false, "");
+      let done = false;
+      let buffer = "";
+      while (!done) {
+        const { value, done: isDone } = await reader.read();
+        if (value) {
+          const chunk = new TextDecoder().decode(value);
+          // The backend sends line-delimited JSON
+          for (const line of chunk.split("\n")) {
+            if (!line.trim()) continue;
+            try {
+              const data = JSON.parse(line);
+              if (typeof data.response === "string") {
+                buffer += data.response;
+                setMessages((prev) => {
+                  // Update last model message content
+                  const updated = [...prev];
+                  for (let i = updated.length - 1; i >= 0; i--) {
+                    if (updated[i].role === "model") {
+                      updated[i] = {
+                        ...updated[i],
+                        content: buffer,
+                        model: model,
+                      };
+                      break;
+                    }
+                  }
+                  return updated;
+                });
+                scrollToBottom();
+              }
+            } catch (err) {
+              // ignore JSON parse errors for partial lines
+              console.log(err)
+            }
+          }
+        }
+        done = isDone;
+      }
     } catch (err) {
-      setError("Failed to fetch response. Please try again.");
+      setError("Streaming failed: " + (err as Error).message);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return minutes > 0
-      ? `${minutes} minute${minutes > 1 ? "s" : ""} ${remainingSeconds} second${
-          remainingSeconds > 1 ? "s" : ""
-        }`
-      : `${remainingSeconds} second${remainingSeconds > 1 ? "s" : ""}`;
-  };
-
-  const renderCodeBlock: React.FC<any> = ({
-    node,
-    inline,
-    className,
-    children,
-    ...props
-  }) => {
-    const match = className ? /language-(\w+)/.exec(className) : null;
-    const language = match ? match[1] : "";
-    const value = String(children).replace(/\n$/, "");
-
-    if (inline) {
-      return (
-        <code
-          style={{
-            backgroundColor: "#f5f5f5",
-            padding: "2px 4px",
-            borderRadius: "4px",
-          }}
-        >
-          {value}
-        </code>
-      );
-    }
-
-    return (
-      <div style={{ position: "relative" }}>
-        <SyntaxHighlighter
-          language={language}
-          style={dracula}
-          children={value}
-          {...props}
-        />
-        <IconButton
-          onClick={() => copyToClipboard(value)}
-          style={{
-            position: "absolute",
-            top: "5px",
-            right: "5px",
-            zIndex: 1,
-            color: "white",
-          }}
-        >
-          <ContentCopyIcon />
-        </IconButton>
-      </div>
-    );
+    setLoading(false);
   };
 
   return (
-    <Box sx={{ width: "100%", mt: 2, m: 1 }}>
+    <Box sx={{ width: "100%", mt: 2 }}>
       <Stack spacing={2}>
-        {/* Input Field */}
         <TextField
           fullWidth
           multiline
@@ -132,55 +114,77 @@ const ChatBox: React.FC<Props> = ({ model }) => {
           placeholder="Type your question..."
           variant="outlined"
           label="Your Question"
+          disabled={loading}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
         />
         <Button
           variant="contained"
           color="primary"
           onClick={handleSend}
           endIcon={<SendIcon />}
+          disabled={loading}
           sx={{ alignSelf: "flex-end" }}
         >
-          Send
+          {loading ? "Sending..." : "Send"}
         </Button>
-
-        {/* Error Message */}
         {error && (
           <Typography color="error" variant="body2">
             {error}
           </Typography>
         )}
-
-        {/* Chat History */}
         {messages.length > 0 && (
-          <Paper elevation={3} sx={{ p: 2, mt: 2, bgcolor: "#f5f5f5" }}>
-            {messages.map((msg, index) => (
-              <Box key={index} sx={{ mb: 2 }}>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight="bold"
+          <Paper
+            elevation={3}
+            sx={{
+              p: 2,
+              mt: 2,
+              bgcolor: "#23272f",
+              color: "#e3e3e3",
+              minHeight: 300,
+            }}
+          >
+            {messages.map((msg, idx) => (
+              <Box
+                key={idx}
+                sx={{
+                  mb: 2,
+                  display: "flex",
+                  flexDirection: msg.role === "user" ? "row-reverse" : "row",
+                }}
+              >
+                <Box
                   sx={{
-                    color: msg.role === "user" ? "blue" : "green",
-                    mb: 1,
+                    bgcolor: msg.role === "user" ? "#1976d2" : "#313540",
+                    color: msg.role === "user" ? "#fff" : "#e3e3e3",
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    boxShadow: 2,
+                    maxWidth: "80%",
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "inherit",
                   }}
                 >
-                  {msg.role === "user" ? "You:" : `${msg.model}:`}
-                </Typography>
-                <ReactMarkdown
-                  children={msg.content}
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                  components={{ code: renderCodeBlock }}
-                />
-                {msg.role === "model" && msg.time_taken !== undefined && (
-                  <Typography
-                    variant="caption"
-                    sx={{ fontStyle: "italic", mt: 1, display: "block" }}
-                  >
-                    {msg.model} responded in {formatTime(msg.time_taken)}
-                  </Typography>
-                )}
+                  {msg.role === "model" && msg.model ? (
+                    <span style={{ fontSize: 12, opacity: 0.7 }}>
+                      {msg.model}
+                      <br />
+                    </span>
+                  ) : null}
+                  <ReactMarkdown
+                    children={msg.content}
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
+                  />
+                </Box>
               </Box>
             ))}
+            <div ref={scrollRef} />
           </Paper>
         )}
       </Stack>

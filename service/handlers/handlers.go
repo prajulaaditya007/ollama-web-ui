@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"os/exec"
 	"strings"
 	"time"
-	"fmt"
+	"os/exec"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,8 +26,7 @@ type QueryRequest struct {
 	PriorResponse string `json:"prior_response,omitempty"`
 }
 
-
-// Response structure to frontend
+// Response structure to frontend (for non-stream)
 type QueryResponse struct {
 	Model      string  `json:"model"`
 	Response   string  `json:"response"`
@@ -63,7 +64,7 @@ func HandleListModels(c *gin.Context) {
 	c.JSON(http.StatusOK, ModelsResponse{Models: models})
 }
 
-// Handles user query to selected LLM
+// Handles user query to selected LLM (non-streaming)
 func HandleQuery(c *gin.Context) {
 	var req QueryRequest
 	if err := c.BindJSON(&req); err != nil {
@@ -99,3 +100,50 @@ func HandleQuery(c *gin.Context) {
 		TokensUsed: tokensUsed,
 	})
 }
+
+// Handles user query to selected LLM (streaming response)
+func HandleQueryStream(c *gin.Context) {
+	var req QueryRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	finalPrompt := req.Prompt
+	if req.History {
+		finalPrompt = fmt.Sprintf("Based on this conversation history:\n%s\n\nAnswer for: %s", req.PriorResponse, req.Prompt)
+	}
+
+	payload := map[string]interface{}{
+		"model":  req.Model,
+		"prompt": finalPrompt,
+		"stream": true,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	ollamaURL := "http://localhost:11434/api/generate"
+	resp, err := http.Post(ollamaURL, "application/json", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reach Ollama"})
+		return
+	}
+	defer resp.Body.Close()
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	writer := c.Writer
+	buf := make([]byte, 4096)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			writer.Write(buf[:n])
+			writer.Flush()
+		}
+		if err != nil {
+			break
+		}
+	}
+}
+

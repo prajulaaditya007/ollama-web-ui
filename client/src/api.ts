@@ -1,24 +1,16 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:8080/query";
-
-// Send a request to the backend
-export const queryModel = async (
+export async function streamModel(
   model: string,
   prompt: string,
   history: boolean,
-  priorResponse: string
-) => {
-  try {
-    const response = await axios.post(API_URL, {
-      model,
-      prompt,
-      history,
-      priorResponse,
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error querying the model:", error);
-    return "Failed to fetch response.";
-  }
-};
+  priorResponse: string,
+  signal?: AbortSignal
+): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+  const response = await fetch("http://localhost:8080/query-stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt, history, priorResponse }),
+    signal,
+  });
+  if (!response.body) throw new Error("No response body");
+  return response.body.getReader();
+}
