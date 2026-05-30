@@ -1,139 +1,167 @@
-import React, { useState, useRef } from "react";
-import { Box, TextField, Button } from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
+import React, { useState } from "react";
+import { Box, TextField, IconButton, Tooltip, Typography } from "@mui/material";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import StopIcon from "@mui/icons-material/Stop";
-import { Message } from "../App";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import KeyboardVoiceIcon from "@mui/icons-material/KeyboardVoice";
+import { useMessageState, useChatActions } from "../context/ChatContext";
 
-import { streamModel } from "../api"; // as above
-
-interface Props {
-  model: string;
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  messages: Message[];
-}
-
-const PromptBar: React.FC<Props> = ({ model, setMessages }) => {
+const PromptBar: React.FC = () => {
+  const { loading } = useMessageState();
+  const { sendMessage, stopGeneration } = useChatActions();
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const controllerRef = useRef<AbortController | null>(null);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
-
-    // Add user message
-    setMessages((prev) => [...prev, { role: "user", content: input }]);
-    setLoading(true);
+  const handleSubmit = () => {
+    if (!input.trim()) return;
+    sendMessage(input);
     setInput("");
-
-    // Add model message placeholder
-    setMessages((prev) => [
-      ...prev,
-      { role: "model", content: "", model: model },
-    ]);
-
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    try {
-      const reader = await streamModel(
-        model,
-        input,
-        false,
-        "",
-        controller.signal
-      );
-      let buffer = "";
-      let done = false;
-      while (!done) {
-        const { value, done: isDone } = await reader.read();
-        if (value) {
-          const chunk = new TextDecoder().decode(value);
-          for (const line of chunk.split("\n")) {
-            if (!line.trim()) continue;
-            try {
-              const data = JSON.parse(line);
-              if (typeof data.response === "string") {
-                buffer += data.response;
-                setMessages((prev) => {
-                  // Update last model message
-                  const updated = [...prev];
-                  for (let i = updated.length - 1; i >= 0; i--) {
-                    if (updated[i].role === "model") {
-                      updated[i] = {
-                        ...updated[i],
-                        content: buffer,
-                        model: model,
-                      };
-                      break;
-                    }
-                  }
-                  return updated;
-                });
-              }
-            } catch (err) {
-                console.log(err)
-            }
-          }
-        }
-        done = isDone;
-      }
-    } catch (err) {
-      // If aborted, just exit
-      console.log('just in case',err)
-    }
-    setLoading(false);
-    controllerRef.current = null;
   };
 
-  // Stop generation
-  const handleStop = () => {
-    controllerRef.current?.abort();
-    setLoading(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
   };
 
   return (
     <Box
       sx={{
-        px: { xs: 1, md: 10 },
-        py: 2,
+        width: "100%",
+        px: { xs: 2.5, sm: 4, md: 6 },
+        pb: 2,
+        pt: 1,
         bgcolor: "background.default",
-        position: "sticky",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        borderTop: "1px solid #22272e",
-        zIndex: 100,
+        borderTop: "1px solid rgba(255, 255, 255, 0.04)",
+        zIndex: 50,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
       }}
     >
-      <TextField
-        fullWidth
-        multiline
-        minRows={1}
-        maxRows={4}
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type your message…"
-        variant="outlined"
-        disabled={loading}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-          }
+      {/* Spotlight-style compact Input Bar */}
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 800,
+          bgcolor: "rgba(30, 30, 32, 0.75)",
+          backdropFilter: "blur(20px)",
+          borderRadius: "10px",
+          border: "1px solid rgba(255, 255, 255, 0.06)",
+          boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3)",
+          p: 1.2,
+          pl: 1.8,
+          pr: 1.2,
+          display: "flex",
+          flexDirection: "column",
+          gap: 0.8,
+          transition: "border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out",
+          "&:focus-within": {
+            borderColor: "primary.main",
+            boxShadow: "0 0 0 1.5px #007aff, 0 12px 32px rgba(0, 0, 0, 0.3)",
+          },
         }}
-        sx={{ mr: 2, bgcolor: "#23272f", borderRadius: 2 }}
-      />
-      <Button
-        variant="contained"
-        color={loading ? "secondary" : "primary"}
-        endIcon={loading ? <StopIcon /> : <SendIcon />}
-        sx={{ minWidth: 110, fontWeight: 600, fontSize: 17 }}
-        onClick={loading ? handleStop : handleSend}
       >
-        {loading ? "Stop" : "Send"}
-      </Button>
+        {/* Core Input text field */}
+        <TextField
+          fullWidth
+          multiline
+          minRows={1}
+          maxRows={6}
+          placeholder="Message Ollama Studio..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          variant="standard"
+          InputProps={{
+            disableUnderline: true,
+            sx: {
+              color: "text.primary",
+              fontSize: "0.88rem", // compact macOS standard
+              lineHeight: 1.45,
+              fontWeight: 400,
+              fontFamily: 'inherit',
+            },
+          }}
+        />
+
+        {/* Action button row inside input card */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 0.2 }}>
+          {/* Mock attachment & voice icons for premium visual design */}
+          <Box sx={{ display: "flex", gap: 0.5, color: "text.secondary" }}>
+            <Tooltip title="Upload Files (Visual design)">
+              <IconButton size="small" sx={{ color: "rgba(255, 255, 255, 0.3)", "&:hover": { color: "text.primary" } }}>
+                <AttachFileIcon sx={{ fontSize: "1.05rem" }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Voice Input (Visual design)">
+              <IconButton size="small" sx={{ color: "rgba(255, 255, 255, 0.3)", "&:hover": { color: "text.primary" } }}>
+                <KeyboardVoiceIcon sx={{ fontSize: "1.05rem" }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {/* Core Send/Stop action button */}
+          <Box>
+            {loading ? (
+              <Tooltip title="Stop generation">
+                <IconButton
+                  onClick={stopGeneration}
+                  size="small"
+                  sx={{
+                    bgcolor: "rgba(239, 68, 68, 0.1)",
+                    color: "error.main",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                    p: 0.7,
+                    borderRadius: "6px",
+                    "&:hover": {
+                      bgcolor: "error.main",
+                      color: "#fff",
+                    },
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <StopIcon sx={{ fontSize: "1rem" }} />
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Send message">
+                <IconButton
+                  onClick={handleSubmit}
+                  disabled={!input.trim()}
+                  size="small"
+                  sx={{
+                    bgcolor: input.trim() ? "primary.main" : "rgba(255, 255, 255, 0.04)",
+                    color: input.trim() ? "#fff" : "rgba(255, 255, 255, 0.15)",
+                    p: 0.7,
+                    borderRadius: "6px",
+                    "&:hover": {
+                      bgcolor: "primary.dark",
+                    },
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <ArrowUpwardIcon sx={{ fontSize: "1rem" }} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Sleek bottom disclaimer */}
+      <Typography
+        variant="caption"
+        sx={{
+          color: "rgba(255, 255, 255, 0.25)",
+          mt: 0.8,
+          fontSize: "0.7rem",
+          fontWeight: 400,
+          letterSpacing: "0.01em",
+        }}
+      >
+        Ollama Studio can make mistakes. Verify important info.
+      </Typography>
     </Box>
   );
 };
