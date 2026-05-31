@@ -28,7 +28,7 @@ const PromptBar: React.FC = () => {
     <Box
       sx={{
         width: "100%",
-        px: { xs: 2.5, sm: 4, md: 6 },
+        px: { xs: 2.5, sm: 3.5, md: 5 },
         pb: 2,
         pt: 1,
         bgcolor: "background.default",
@@ -43,7 +43,7 @@ const PromptBar: React.FC = () => {
       <Box
         sx={{
           width: "100%",
-          maxWidth: 800,
+          maxWidth: { xs: "100%", md: 800 },
           bgcolor: "rgba(30, 30, 32, 0.75)",
           backdropFilter: "blur(20px)",
           borderRadius: "10px",

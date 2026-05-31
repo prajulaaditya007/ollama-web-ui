@@ -91,48 +91,53 @@ const Navbar: React.FC<Props> = ({
           height: 48,
         }}
       >
-        {/* Left Section: Sidebar Expand Button & Model Selector */}
+        {/* Left Section: Traffic Lights (when sidebar closed) + Expand Button + Model Selector */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           {!sidebarOpen && (
-            <Tooltip title="Expand Sidebar">
-              <IconButton
-                onClick={toggleSidebar}
-                edge="start"
-                size="small"
-                sx={{
-                  color: "text.secondary",
-                  "&:hover": { color: "primary.light", bgcolor: "rgba(255, 255, 255, 0.04)" },
-                  p: 0.3,
-                }}
-              >
-                <ChevronRightIcon sx={{ fontSize: "1.1rem" }} />
-              </IconButton>
-            </Tooltip>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Tooltip title="Expand Sidebar">
+                <IconButton
+                  onClick={toggleSidebar}
+                  edge="start"
+                  size="small"
+                  sx={{
+                    color: "text.secondary",
+                    "&:hover": { color: "primary.light", bgcolor: "rgba(255, 255, 255, 0.04)" },
+                    p: 0.3,
+                  }}
+                >
+                  <ChevronRightIcon sx={{ fontSize: "1.1rem" }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
           )}
 
+          {/* Model Selector Pill */}
           <Box
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: 1,
-              bgcolor: "rgba(255, 255, 255, 0.05)",
+              gap: 0.8,
+              bgcolor: "rgba(255, 255, 255, 0.04)",
               px: 1.2,
-              py: 0.3,
-              borderRadius: "6px",
-              border: "1px solid rgba(255, 255, 255, 0.04)",
+              py: 0.4,
+              borderRadius: "8px",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              transition: "border-color 0.15s ease",
+              "&:hover": { borderColor: "rgba(255,255,255,0.1)" },
             }}
           >
-            {/* Status dot */}
+            {/* Live status dot */}
             <Box
               sx={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
-                bgcolor: models.length > 0 ? "secondary.main" : "error.main",
+                bgcolor: models.length > 0 ? "#27c93f" : "#ff5f57",
                 boxShadow: models.length > 0
-                  ? "0 0 5px rgba(16, 185, 129, 0.6)"
-                  : "0 0 5px rgba(239, 68, 68, 0.6)",
-                display: "inline-block",
+                  ? "0 0 5px rgba(39, 201, 63, 0.7)"
+                  : "0 0 5px rgba(255, 95, 87, 0.7)",
+                flexShrink: 0,
               }}
             />
             <Select
@@ -143,28 +148,28 @@ const Navbar: React.FC<Props> = ({
               variant="standard"
               disableUnderline
               sx={{
-                minWidth: 130,
+                minWidth: 120,
+                maxWidth: 200,
                 fontSize: "0.8rem",
                 fontWeight: 500,
                 fontFamily: 'inherit',
                 color: "text.primary",
                 "& .MuiSelect-select": {
-                  py: 0.3,
-                  pr: "20px !important",
-                  "&:focus": {
-                    backgroundColor: "transparent",
-                  },
+                  py: 0,
+                  pr: "18px !important",
+                  "&:focus": { backgroundColor: "transparent" },
                 },
                 "& .MuiSelect-icon": {
-                  color: "text.secondary",
-                  fontSize: "1.1rem",
+                  color: "rgba(255,255,255,0.3)",
+                  fontSize: "1rem",
+                  right: 0,
                 },
               }}
             >
               {loading ? (
-                <MenuItem value={model}>Loading models...</MenuItem>
+                <MenuItem value={model} sx={{ fontSize: "0.8rem" }}>Loading...</MenuItem>
               ) : models.length === 0 ? (
-                <MenuItem value="">No Models Installed</MenuItem>
+                <MenuItem value="" sx={{ fontSize: "0.8rem" }}>No Models</MenuItem>
               ) : (
                 models.map((m) => (
                   <MenuItem

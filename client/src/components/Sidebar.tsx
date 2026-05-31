@@ -45,30 +45,28 @@ const Sidebar: React.FC = () => {
       {/* Header with macOS Traffic Lights & Title & Collapse button */}
       <Box
         sx={{
-          p: 1.5,
-          pt: 2.2,
-          pb: 1.5,
+          px: 1.5,
+          pt: 1.8,
+          pb: 1,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           minHeight: 48,
+          WebkitAppRegion: "drag",
         }}
       >
-
-
         <Typography
           variant="subtitle2"
           onClick={onGoHome}
           sx={{
-            fontWeight: 700,
-            fontSize: "0.82rem",
-            color: "text.primary",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            color: "text.secondary",
             cursor: "pointer",
-            flexGrow: 1,
-            textAlign: "center",
+            letterSpacing: "0.01em",
             fontFamily: '"-apple-system", BlinkMacSystemFont, sans-serif',
-            opacity: 0.9,
-            pl: 1,
+            opacity: 0.7,
+            userSelect: "none",
           }}
         >
           Ollama Studio
@@ -82,6 +80,7 @@ const Sidebar: React.FC = () => {
               color: "text.secondary",
               "&:hover": { color: "primary.light", bgcolor: "rgba(255, 255, 255, 0.04)" },
               p: 0.3,
+              WebkitAppRegion: "no-drag",
             }}
           >
             <ChevronLeftIcon sx={{ fontSize: "1.1rem" }} />

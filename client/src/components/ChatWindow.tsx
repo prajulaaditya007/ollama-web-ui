@@ -37,14 +37,14 @@ const ChatWindow: React.FC = () => {
 		>
 			<Box
 				sx={{
-					maxWidth: 1000,
+					maxWidth: 800,
 					mx: "auto",
-					px: { xs: 2.5, sm: 4, md: 6 },
-					py: 4,
-					pb: 12, // generous spacing to avoid prompt box overlaps
+					px: { xs: 2.5, sm: 3.5, md: 5 },
+					py: 3,
+					pb: 10,
 					display: "flex",
 					flexDirection: "column",
-					gap: 1,
+					gap: 0.5,
 				}}
 			>
 				{/* Individual Message Turns */}
