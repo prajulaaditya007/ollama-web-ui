@@ -5,12 +5,9 @@ import ChatWindow from "./components/ChatWindow";
 import PromptBar from "./components/PromptBar";
 import Sidebar from "./components/Sidebar";
 import LoginCard from "./components/LoginCard";
-import { ChatProvider, useSessionState } from "./context/ChatContext";
-
-interface UserProfile {
-  id: number;
-  email: string;
-}
+import { ChatProvider } from "./context/ChatContext";
+import { useSessionState } from "./context/useChatContext";
+import { UserContext, UserProfile } from "./context/UserContext";
 
 const AppContent: React.FC<{
   model: string;
@@ -93,15 +90,24 @@ const App: React.FC = () => {
     setCurrentUser(null);
   };
 
+  const updateUsername = (newUsername: string) => {
+    setCurrentUser((prev) => {
+      if (!prev) return null;
+      return { ...prev, username: newUsername };
+    });
+  };
+
   // If no user is logged in, show the premium glassmorphic auth card
   if (!currentUser) {
     return <LoginCard onAuthSuccess={(user) => setCurrentUser(user)} />;
   }
 
   return (
-    <ChatProvider userId={currentUser.id} selectedModel={model}>
-      <AppContent model={model} setModel={setModel} handleSignOut={handleSignOut} />
-    </ChatProvider>
+    <UserContext.Provider value={{ currentUser, updateUsername }}>
+      <ChatProvider userId={currentUser.id} selectedModel={model}>
+        <AppContent model={model} setModel={setModel} handleSignOut={handleSignOut} />
+      </ChatProvider>
+    </UserContext.Provider>
   );
 };
 

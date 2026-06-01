@@ -19,10 +19,10 @@ func main() {
 
 	router := gin.Default()
 
-	// ✅ Enable CORS specifically for the Vite dev server
+	// ✅ Enable CORS for the Vite dev server — PATCH is required for username updates
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{"GET", "POST", "OPTIONS", "DELETE"},
+		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "OPTIONS", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length", "X-Session-ID"},
 		AllowCredentials: true,
@@ -32,6 +32,8 @@ func main() {
 	api := router.Group("/api")
 	{
 		api.POST("/auth", handlers.HandleAuth)
+		api.POST("/auth/reset-password", handlers.HandleResetPassword)
+		api.PATCH("/user/:id", handlers.HandleUpdateUsername) // update display username
 		api.GET("/models", handlers.HandleListModels)
 		api.GET("/sessions", handlers.HandleGetSessions)
 		api.POST("/sessions", handlers.HandleCreateSession)
@@ -40,7 +42,7 @@ func main() {
 		api.POST("/chat", handlers.HandleChatStream)
 	}
 
-	// Legacy route support, keeping models mapped at root if needed
+	// Legacy route support
 	router.GET("/models", handlers.HandleListModels)
 
 	fmt.Println("Ollama Studio Backend running on :8080")

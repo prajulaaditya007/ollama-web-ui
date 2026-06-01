@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { Box, TextField, IconButton, Tooltip, Typography } from "@mui/material";
+import { Box, TextField, IconButton, Tooltip, Typography, Alert } from "@mui/material";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import StopIcon from "@mui/icons-material/Stop";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import KeyboardVoiceIcon from "@mui/icons-material/KeyboardVoice";
-import { useMessageState, useChatActions } from "../context/ChatContext";
+import { useMessageState, useChatActions, useSessionState } from "../context/useChatContext";
 
 const PromptBar: React.FC = () => {
   const { loading } = useMessageState();
+  const { dbError } = useSessionState();
   const { sendMessage, stopGeneration } = useChatActions();
   const [input, setInput] = useState("");
 
@@ -39,15 +40,40 @@ const PromptBar: React.FC = () => {
         alignItems: "center",
       }}
     >
+      {dbError && (
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: { xs: "100%", md: 800 },
+            mb: 1.5,
+          }}
+        >
+          <Alert
+            severity="error"
+            sx={{
+              borderRadius: "10px",
+              bgcolor: "rgba(239, 68, 68, 0.08)",
+              border: "1px solid rgba(239, 68, 68, 0.2)",
+              color: "#f87171",
+              "& .MuiAlert-icon": { color: "#f87171" },
+              fontSize: "0.82rem",
+              py: 0.5,
+            }}
+          >
+            {dbError}
+          </Alert>
+        </Box>
+      )}
+
       {/* Spotlight-style compact Input Bar */}
       <Box
         sx={{
           width: "100%",
           maxWidth: { xs: "100%", md: 800 },
-          bgcolor: "rgba(30, 30, 32, 0.75)",
+          bgcolor: dbError ? "rgba(30, 30, 32, 0.45)" : "rgba(30, 30, 32, 0.75)",
           backdropFilter: "blur(20px)",
           borderRadius: "10px",
-          border: "1px solid rgba(255, 255, 255, 0.06)",
+          border: dbError ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid rgba(255, 255, 255, 0.06)",
           boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3)",
           p: 1.2,
           pl: 1.8,
@@ -56,7 +82,7 @@ const PromptBar: React.FC = () => {
           flexDirection: "column",
           gap: 0.8,
           transition: "border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out",
-          "&:focus-within": {
+          "&:focus-within": dbError ? {} : {
             borderColor: "primary.main",
             boxShadow: "0 0 0 1.5px #007aff, 0 12px 32px rgba(0, 0, 0, 0.3)",
           },
@@ -68,15 +94,16 @@ const PromptBar: React.FC = () => {
           multiline
           minRows={1}
           maxRows={6}
-          placeholder="Message Ollama Studio..."
+          placeholder={dbError ? "Chat disabled: connection failed to db, services are down" : "Message Ollama Studio..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={loading || !!dbError}
           variant="standard"
           InputProps={{
             disableUnderline: true,
             sx: {
-              color: "text.primary",
+              color: dbError ? "text.disabled" : "text.primary",
               fontSize: "0.88rem", // compact macOS standard
               lineHeight: 1.45,
               fontWeight: 400,
@@ -89,13 +116,13 @@ const PromptBar: React.FC = () => {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 0.2 }}>
           {/* Mock attachment & voice icons for premium visual design */}
           <Box sx={{ display: "flex", gap: 0.5, color: "text.secondary" }}>
-            <Tooltip title="Upload Files (Visual design)">
-              <IconButton size="small" sx={{ color: "rgba(255, 255, 255, 0.3)", "&:hover": { color: "text.primary" } }}>
+            <Tooltip title={dbError ? "Disabled" : "Upload Files (Visual design)"}>
+              <IconButton disabled={!!dbError} size="small" sx={{ color: "rgba(255, 255, 255, 0.3)", "&:hover": { color: "text.primary" } }}>
                 <AttachFileIcon sx={{ fontSize: "1.05rem" }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Voice Input (Visual design)">
-              <IconButton size="small" sx={{ color: "rgba(255, 255, 255, 0.3)", "&:hover": { color: "text.primary" } }}>
+            <Tooltip title={dbError ? "Disabled" : "Voice Input (Visual design)"}>
+              <IconButton disabled={!!dbError} size="small" sx={{ color: "rgba(255, 255, 255, 0.3)", "&:hover": { color: "text.primary" } }}>
                 <KeyboardVoiceIcon sx={{ fontSize: "1.05rem" }} />
               </IconButton>
             </Tooltip>
@@ -125,14 +152,14 @@ const PromptBar: React.FC = () => {
                 </IconButton>
               </Tooltip>
             ) : (
-              <Tooltip title="Send message">
+              <Tooltip title={dbError ? "Database offline" : "Send message"}>
                 <IconButton
                   onClick={handleSubmit}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || !!dbError}
                   size="small"
                   sx={{
-                    bgcolor: input.trim() ? "primary.main" : "rgba(255, 255, 255, 0.04)",
-                    color: input.trim() ? "#fff" : "rgba(255, 255, 255, 0.15)",
+                    bgcolor: (input.trim() && !dbError) ? "primary.main" : "rgba(255, 255, 255, 0.04)",
+                    color: (input.trim() && !dbError) ? "#fff" : "rgba(255, 255, 255, 0.15)",
                     p: 0.7,
                     borderRadius: "6px",
                     "&:hover": {

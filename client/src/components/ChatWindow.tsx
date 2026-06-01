@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Box } from "@mui/material";
 import MessageBubble from "./MessageBubble";
 import WelcomeScreen from "./WelcomeScreen";
-import { useMessageState, useChatActions } from "../context/ChatContext";
+import { useMessageState, useChatActions } from "../context/useChatContext";
 
 const ChatWindow: React.FC = () => {
 	const { messages, loading } = useMessageState();

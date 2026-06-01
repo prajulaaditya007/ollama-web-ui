@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -18,13 +18,15 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ComputerIcon from "@mui/icons-material/Computer";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import { useSessionState, useChatActions } from "../context/ChatContext";
+import { useSessionState, useChatActions } from "../context/useChatContext";
+import SettingsModal from "./SettingsModal";
 
 const DRAWER_WIDTH = 230;
 
 const Sidebar: React.FC = () => {
-  const { sessions, currentSessionId, setCurrentSessionId, sidebarOpen } = useSessionState();
+  const { sessions, currentSessionId, setCurrentSessionId, sidebarOpen, dbError } = useSessionState();
   const { createNewSession, deleteSession, toggleSidebar } = useChatActions();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const onGoHome = () => {
     setCurrentSessionId(null);
@@ -94,6 +96,7 @@ const Sidebar: React.FC = () => {
           fullWidth
           variant="contained"
           onClick={createNewSession}
+          disabled={!!dbError}
           startIcon={<AddIcon sx={{ fontSize: "0.95rem" }} />}
           sx={{
             py: 0.7,
@@ -103,7 +106,7 @@ const Sidebar: React.FC = () => {
             border: "1px solid rgba(255, 255, 255, 0.04)",
             borderRadius: "6px",
             fontWeight: 600,
-            fontSize: "0.8rem",
+            fontSize: "0.80rem",
             boxShadow: "none",
             justifyContent: "center",
             "&:hover": {
@@ -223,7 +226,11 @@ const Sidebar: React.FC = () => {
             Ollama Backend Active
           </Typography>
           <Tooltip title="Settings">
-            <IconButton size="small" sx={{ color: "text.secondary", p: 0.2 }}>
+            <IconButton
+              size="small"
+              onClick={() => setSettingsOpen(true)}
+              sx={{ color: "text.secondary", p: 0.2, "&:hover": { color: "primary.light" } }}
+            >
               <SettingsIcon sx={{ fontSize: "0.85rem" }} />
             </IconButton>
           </Tooltip>
@@ -233,52 +240,56 @@ const Sidebar: React.FC = () => {
   );
 
   return (
-    <Box
-      component="nav"
-      sx={{
-        width: { sm: sidebarOpen ? DRAWER_WIDTH : 0 },
-        flexShrink: { sm: 0 },
-        transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-      }}
-      aria-label="chat history sessions"
-    >
-      {/* Mobile Drawer (Temporary, hidden on desktop sizes) */}
-      <Drawer
-        variant="temporary"
-        open={sidebarOpen}
-        onClose={toggleSidebar}
-        ModalProps={{
-          keepMounted: true, // Better open performance on mobile devices.
-        }}
+    <>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <Box
+        component="nav"
         sx={{
-          display: { xs: "block", sm: "none" },
-          "& .MuiDrawer-paper": {
-            boxSizing: "border-box",
-            width: DRAWER_WIDTH,
-            borderRight: "1px solid rgba(255, 255, 255, 0.08)",
-          },
+          width: { sm: sidebarOpen ? DRAWER_WIDTH : 0 },
+          flexShrink: { sm: 0 },
+          transition: "width 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
+        aria-label="chat history sessions"
       >
-        {drawerContent}
-      </Drawer>
+        {/* Mobile Drawer (Temporary, hidden on desktop sizes) */}
+        <Drawer
+          variant="temporary"
+          open={sidebarOpen}
+          onClose={toggleSidebar}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile devices.
+          }}
+          sx={{
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
+              width: DRAWER_WIDTH,
+              borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
 
-      {/* Desktop Drawer (Persistent / Permanent, hidden on mobile screen sizes) */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: "none", sm: sidebarOpen ? "block" : "none" },
-          "& .MuiDrawer-paper": {
-            boxSizing: "border-box",
-            width: DRAWER_WIDTH,
-            borderRight: "1px solid rgba(255, 255, 255, 0.08)",
-          },
-        }}
-        open={sidebarOpen}
-      >
-        {drawerContent}
-      </Drawer>
-    </Box>
+        {/* Desktop Drawer (Persistent / Permanent, hidden on mobile screen sizes) */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: "none", sm: sidebarOpen ? "block" : "none" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
+              width: DRAWER_WIDTH,
+              borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+            },
+          }}
+          open={sidebarOpen}
+        >
+          {drawerContent}
+        </Drawer>
+      </Box>
+    </>
   );
 };
 
 export default Sidebar;
+

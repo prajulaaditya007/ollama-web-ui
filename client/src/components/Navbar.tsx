@@ -14,7 +14,8 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CloudQueueIcon from "@mui/icons-material/CloudQueue";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { useSessionState, useChatActions } from "../context/ChatContext";
+import { useSessionState, useChatActions } from "../context/useChatContext";
+import { useCurrentUser } from "../context/UserContext";
 
 interface Props {
   model: string;
@@ -29,23 +30,13 @@ const Navbar: React.FC<Props> = ({
 }) => {
   const { sidebarOpen } = useSessionState();
   const { toggleSidebar } = useChatActions();
+  const { currentUser } = useCurrentUser();
   const [models, setModels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string>("");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("ollama_current_user");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.email) {
-          setUserEmail(parsed.email);
-        }
-      } catch (e) {
-        console.error("Failed to parse user email inside Navbar:", e);
-      }
-    }
-  }, []);
+  // Derive display name: prefer username, fall back to email prefix
+  const displayName = currentUser?.username || currentUser?.email?.split("@")[0] || "";
+  const avatarInitial = displayName[0]?.toUpperCase() ?? "?";
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -213,7 +204,7 @@ const Navbar: React.FC<Props> = ({
           </Tooltip>
 
           {/* User Profile avatar pill and Logout */}
-          {userEmail && (
+          {currentUser && (
             <Box
               sx={{
                 display: "flex",
@@ -236,7 +227,7 @@ const Navbar: React.FC<Props> = ({
                   color: "#fff",
                 }}
               >
-                {userEmail[0].toUpperCase()}
+                {avatarInitial}
               </Avatar>
               <Typography
                 variant="caption"
@@ -247,7 +238,7 @@ const Navbar: React.FC<Props> = ({
                   display: { xs: "none", sm: "block" },
                 }}
               >
-                {userEmail.split("@")[0]}
+                {displayName}
               </Typography>
               <Box sx={{ width: 1, height: 10, bgcolor: "rgba(255, 255, 255, 0.1)", display: { xs: "none", sm: "block" } }} />
               <Tooltip title="Sign Out">

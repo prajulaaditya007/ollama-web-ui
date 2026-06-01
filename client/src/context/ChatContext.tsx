@@ -1,70 +1,15 @@
-import React, { createContext, useState, useEffect, useRef, useCallback, useContext } from "react";
+// This file exports ONLY the ChatProvider component — satisfying Vite Fast Refresh.
+// Context objects → chatContexts.ts
+// Type interfaces  → chatTypes.ts
+// Custom hooks     → useChatContext.ts
 
-export interface Message {
-  id?: number;
-  session_id?: number;
-  role: "user" | "model";
-  content: string;
-  tokenCount?: number;
-  created_at?: string;
-}
-
-export interface ChatSession {
-  id: number;
-  user_id: number;
-  is_pinned: boolean;
-  title: string;
-  model_id: string;
-  provider: string;
-  createdAt: number;
-  updatedAt: number;
-  messages?: Message[];
-}
-
-export interface APIChatSession {
-  id: number;
-  user_id: number;
-  is_pinned?: boolean;
-  title: string;
-  model_id: string;
-  provider: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface APIMessage {
-  id: number;
-  session_id: number;
-  role: string;
-  content: string;
-  token_count?: number;
-  created_at: string;
-}
-
-interface SessionState {
-  sessions: ChatSession[];
-  currentSessionId: number | null;
-  setCurrentSessionId: (id: number | null) => void;
-  sidebarOpen: boolean;
-}
-
-interface MessageState {
-  messages: Message[];
-  loading: boolean;
-}
-
-interface ChatActions {
-  createNewSession: () => Promise<void>;
-  deleteSession: (id: number, event?: React.MouseEvent) => Promise<void>;
-  sendMessage: (promptText: string) => Promise<void>;
-  stopGeneration: () => void;
-  loadSessions: () => Promise<ChatSession[]>;
-  toggleSidebar: () => void;
-}
-
-const SessionStateContext = createContext<SessionState | undefined>(undefined);
-const MessageStateContext = createContext<MessageState | undefined>(undefined);
-const ChatActionsContext = createContext<ChatActions | undefined>(undefined);
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { Message, ChatSession, APIChatSession, APIMessage } from "./chatTypes";
+import {
+  SessionStateContext,
+  MessageStateContext,
+  ChatActionsContext,
+} from "./chatContexts";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -77,6 +22,7 @@ export const ChatProvider: React.FC<{
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
@@ -97,8 +43,16 @@ export const ChatProvider: React.FC<{
     if (userId === null) return [];
     try {
       const response = await fetch(`${API_BASE_URL}/sessions?user_id=${userId}`);
-      if (!response.ok) throw new Error("Failed to fetch sessions");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData.error || "Failed to fetch sessions";
+        if (errMsg.includes("connection failed to db") || errMsg.includes("services are down")) {
+          setDbError("connection failed to db, services are down");
+        }
+        throw new Error(errMsg);
+      }
       const data = await response.json();
+      setDbError(null);
 
       const mappedSessions: ChatSession[] = data.map((s: APIChatSession) => ({
         id: s.id,
@@ -115,6 +69,10 @@ export const ChatProvider: React.FC<{
       return mappedSessions;
     } catch (error) {
       console.error("Failed to load sessions:", error);
+      const errMsg = error instanceof Error ? error.message : "";
+      if (errMsg.includes("connection failed to db") || errMsg.includes("services are down") || errMsg.includes("Failed to fetch")) {
+        setDbError("connection failed to db, services are down");
+      }
       return [];
     }
   }, [userId]);
@@ -162,8 +120,16 @@ export const ChatProvider: React.FC<{
     const loadMessages = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/sessions/${currentSessionId}/messages`);
-        if (!response.ok) throw new Error("Failed to fetch messages");
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = errData.error || "Failed to fetch messages";
+          if (errMsg.includes("connection failed to db") || errMsg.includes("services are down")) {
+            setDbError("connection failed to db, services are down");
+          }
+          throw new Error(errMsg);
+        }
         const data = await response.json();
+        setDbError(null);
 
         if (isMounted) {
           const mappedMessages: Message[] = (data || []).map((m: APIMessage) => ({
@@ -178,6 +144,10 @@ export const ChatProvider: React.FC<{
         }
       } catch (error) {
         console.error(`Failed to load messages for session ${currentSessionId}:`, error);
+        const errMsg = error instanceof Error ? error.message : "";
+        if (errMsg.includes("connection failed to db") || errMsg.includes("services are down")) {
+          setDbError("connection failed to db, services are down");
+        }
       }
     };
 
@@ -202,8 +172,16 @@ export const ChatProvider: React.FC<{
           provider: "ollama",
         }),
       });
-      if (!response.ok) throw new Error("Failed to create session");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData.error || "Failed to create session";
+        if (errMsg.includes("connection failed to db") || errMsg.includes("services are down")) {
+          setDbError("connection failed to db, services are down");
+        }
+        throw new Error(errMsg);
+      }
       const newSession = await response.json();
+      setDbError(null);
 
       const mappedSession: ChatSession = {
         id: newSession.id,
@@ -238,7 +216,15 @@ export const ChatProvider: React.FC<{
       const response = await fetch(`${API_BASE_URL}/sessions/${id}?user_id=${userId}`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Failed to delete session");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData.error || "Failed to delete session";
+        if (errMsg.includes("connection failed to db") || errMsg.includes("services are down")) {
+          setDbError("connection failed to db, services are down");
+        }
+        throw new Error(errMsg);
+      }
+      setDbError(null);
 
       setSessions((prev) => prev.filter((s) => s.id !== id));
 
@@ -437,7 +423,7 @@ export const ChatProvider: React.FC<{
   }, [currentSessionId, selectedModel, loading, loadSessions, userId]);
 
   return (
-    <SessionStateContext.Provider value={{ sessions, currentSessionId, setCurrentSessionId, sidebarOpen }}>
+    <SessionStateContext.Provider value={{ sessions, currentSessionId, setCurrentSessionId, sidebarOpen, dbError }}>
       <MessageStateContext.Provider value={{ messages, loading }}>
         <ChatActionsContext.Provider value={{ createNewSession, deleteSession, sendMessage, stopGeneration, loadSessions, toggleSidebar }}>
           {children}
@@ -445,22 +431,4 @@ export const ChatProvider: React.FC<{
       </MessageStateContext.Provider>
     </SessionStateContext.Provider>
   );
-};
-
-export const useSessionState = () => {
-  const context = useContext(SessionStateContext);
-  if (!context) throw new Error("useSessionState must be used within a ChatProvider");
-  return context;
-};
-
-export const useMessageState = () => {
-  const context = useContext(MessageStateContext);
-  if (!context) throw new Error("useMessageState must be used within a ChatProvider");
-  return context;
-};
-
-export const useChatActions = () => {
-  const context = useContext(ChatActionsContext);
-  if (!context) throw new Error("useChatActions must be used within a ChatProvider");
-  return context;
 };

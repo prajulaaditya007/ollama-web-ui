@@ -28,39 +28,54 @@ func InitDB() error {
 
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		connStr = "postgres://vader:dbpass%402025@100.95.186.86:5432/ollama_studio?sslmode=disable"
+		log.Println("WARNING: DATABASE_URL is not set in environmental variables or .env file. Database features will be disabled.")
+		Pool = nil
+		return nil
 	}
 
 	log.Printf("Connecting to PostgreSQL at: %s", connStr)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	config, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse connection config: %w", err)
+		log.Printf("WARNING: failed to parse connection config: %v. Database features will be disabled.", err)
+		Pool = nil
+		return nil
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		return fmt.Errorf("failed to create pool: %w", err)
+		log.Printf("WARNING: failed to create pool: %v. Database features will be disabled.", err)
+		Pool = nil
+		return nil
 	}
 
 	if err := pool.Ping(ctx); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
+		log.Printf("WARNING: failed to ping database: %v. Database features will be disabled.", err)
+		Pool = nil
+		return nil
 	}
 
 	Pool = pool
 	log.Println("Database connection pool initialized successfully.")
 
 	if err := migrateAndSeed(ctx); err != nil {
-		return fmt.Errorf("database schema setup failed: %w", err)
+		log.Printf("WARNING: database schema setup failed: %v. Database features will be disabled.", err)
+		Pool.Close()
+		Pool = nil
+		return nil
 	}
 
 	return nil
 }
 
 func migrateAndSeed(ctx context.Context) error {
+	if Pool == nil {
+		return fmt.Errorf("database pool is not initialized")
+	}
+
 	// Create tables if they do not exist (matching exact remote column definitions)
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -69,6 +84,7 @@ func migrateAndSeed(ctx context.Context) error {
 			password_hash TEXT NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 		);`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100);`,
 		`CREATE TABLE IF NOT EXISTS chat_sessions (
 			id SERIAL PRIMARY KEY,
 			user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

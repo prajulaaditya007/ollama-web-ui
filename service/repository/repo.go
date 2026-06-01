@@ -12,7 +12,7 @@ import (
 func GetSessions(ctx context.Context, userID int) ([]models.ChatSession, error) {
 	pool := db.GetPool()
 	if pool == nil {
-		return nil, fmt.Errorf("database pool is not initialized")
+		return nil, fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -57,7 +57,7 @@ func GetSessions(ctx context.Context, userID int) ([]models.ChatSession, error) 
 func GetSessionMessages(ctx context.Context, sessionID int) ([]models.Message, error) {
 	pool := db.GetPool()
 	if pool == nil {
-		return nil, fmt.Errorf("database pool is not initialized")
+		return nil, fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -100,7 +100,7 @@ func GetSessionMessages(ctx context.Context, sessionID int) ([]models.Message, e
 func CreateSession(ctx context.Context, userID int, title string, modelID string, provider string) (*models.ChatSession, error) {
 	pool := db.GetPool()
 	if pool == nil {
-		return nil, fmt.Errorf("database pool is not initialized")
+		return nil, fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -130,7 +130,7 @@ func CreateSession(ctx context.Context, userID int, title string, modelID string
 func SaveMessage(ctx context.Context, sessionID int, role string, content string, tokenCount int) (*models.Message, error) {
 	pool := db.GetPool()
 	if pool == nil {
-		return nil, fmt.Errorf("database pool is not initialized")
+		return nil, fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -158,7 +158,7 @@ func SaveMessage(ctx context.Context, sessionID int, role string, content string
 func UpdateSessionTimestamp(ctx context.Context, sessionID int) error {
 	pool := db.GetPool()
 	if pool == nil {
-		return fmt.Errorf("database pool is not initialized")
+		return fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -174,7 +174,7 @@ func UpdateSessionTimestamp(ctx context.Context, sessionID int) error {
 func DeleteSession(ctx context.Context, sessionID int, userID int) error {
 	pool := db.GetPool()
 	if pool == nil {
-		return fmt.Errorf("database pool is not initialized")
+		return fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -198,7 +198,7 @@ func DeleteSession(ctx context.Context, sessionID int, userID int) error {
 func UpdateMessageTokenCount(ctx context.Context, messageID int, tokenCount int) error {
 	pool := db.GetPool()
 	if pool == nil {
-		return fmt.Errorf("database pool is not initialized")
+		return fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
@@ -214,7 +214,7 @@ func UpdateMessageTokenCount(ctx context.Context, messageID int, tokenCount int)
 func UpdateSessionTitle(ctx context.Context, sessionID int, title string) error {
 	pool := db.GetPool()
 	if pool == nil {
-		return fmt.Errorf("database pool is not initialized")
+		return fmt.Errorf("connection failed to db, services are down")
 	}
 
 	query := `
