@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+service/.env.example
 
 # OS files
 .DS_Store
