@@ -56,7 +56,7 @@ const ChatBox: React.FC<Props> = ({ model }) => {
 
     try {
       // Streaming reader
-      const reader = await streamModel(model, input, false, "");
+      const reader = await streamModel(model, input);
       let done = false;
       let buffer = "";
       while (!done) {

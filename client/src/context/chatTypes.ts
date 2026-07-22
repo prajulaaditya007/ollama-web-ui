@@ -11,6 +11,11 @@ export interface Message {
   created_at?: string;
 }
 
+export interface SendMessageOptions {
+  images?: string[];
+  docText?: string;
+}
+
 export interface ChatSession {
   id: number;
   user_id: number;

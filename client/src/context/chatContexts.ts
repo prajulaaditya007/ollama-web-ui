@@ -3,7 +3,7 @@
 // Context objects (createContext) are not components, so they live here.
 
 import React, { createContext } from "react";
-import { ChatSession, Message } from "./chatTypes";
+import { ChatSession, Message, SendMessageOptions } from "./chatTypes";
 
 export interface SessionState {
   sessions: ChatSession[];
@@ -21,7 +21,7 @@ export interface MessageState {
 export interface ChatActions {
   createNewSession: () => Promise<void>;
   deleteSession: (id: number, event?: React.MouseEvent) => Promise<void>;
-  sendMessage: (promptText: string) => Promise<void>;
+  sendMessage: (promptText: string, options?: SendMessageOptions) => Promise<void>;
   stopGeneration: () => void;
   loadSessions: () => Promise<ChatSession[]>;
   toggleSidebar: () => void;

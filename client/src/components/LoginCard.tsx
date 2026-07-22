@@ -33,7 +33,7 @@ const LoginCard: React.FC<Props> = ({ onAuthSuccess }) => {
 		const hasUpper = /[A-Z]/.test(pass);
 		const hasLower = /[a-z]/.test(pass);
 		const hasDigit = /[0-9]/.test(pass);
-		const hasSpecial = /[!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/;`'~]/.test(pass);
+		const hasSpecial = /[!@#$%^&*(),.?":{}|<>_+\-=[\]\\/;`'~]/.test(pass);
 		return hasUpper && hasLower && hasDigit && hasSpecial;
 	};
 

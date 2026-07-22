@@ -15,18 +15,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const maxDocumentContextRunes = 120000
+
 // ChatRequest defines the request body mapping (including user_id)
 type ChatRequest struct {
-	UserID    int    `json:"user_id"`
-	SessionID int    `json:"session_id"`
-	Prompt    string `json:"prompt"`
-	ModelID   string `json:"model_id"`
+	UserID    int      `json:"user_id"`
+	SessionID int      `json:"session_id"`
+	Prompt    string   `json:"prompt"`
+	ModelID   string   `json:"model_id"`
+	Images    []string `json:"images,omitempty"`
+	DocText   string   `json:"doc_text,omitempty"`
 }
 
 // OllamaChatMessage defines Ollama's inner history parameters
 type OllamaChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string   `json:"role"`
+	Content string   `json:"content"`
+	Images  []string `json:"images,omitempty"`
 }
 
 // OllamaChatRequest defines payload mapping to http://localhost:11434/api/chat
@@ -116,6 +121,7 @@ func HandleChatStream(c *gin.Context) {
 
 	// 4. Map DB message structures to Ollama compatible structures
 	var chatHistory []OllamaChatMessage
+	currentUserTurnIndex := -1
 	for _, dbMsg := range dbMessages {
 		role := dbMsg.Role
 		if role == "model" {
@@ -125,6 +131,19 @@ func HandleChatStream(c *gin.Context) {
 			Role:    role,
 			Content: dbMsg.Content,
 		})
+		if userMsg != nil && dbMsg.ID == userMsg.ID {
+			currentUserTurnIndex = len(chatHistory) - 1
+		}
+	}
+
+	if currentUserTurnIndex >= 0 {
+		chatHistory[currentUserTurnIndex].Content = buildUserPromptWithDocumentContext(
+			chatHistory[currentUserTurnIndex].Content,
+			req.DocText,
+		)
+		if len(req.Images) > 0 {
+			chatHistory[currentUserTurnIndex].Images = req.Images
+		}
 	}
 
 	// 5. Serialize Ollama payload
@@ -235,4 +254,29 @@ func getSessionTitle(prompt string) string {
 		return string(runes[:30]) + "..."
 	}
 	return prompt
+}
+
+func buildUserPromptWithDocumentContext(prompt string, docText string) string {
+	docText = strings.TrimSpace(docText)
+	if docText == "" {
+		return prompt
+	}
+
+	docRunes := []rune(docText)
+	truncated := false
+	if len(docRunes) > maxDocumentContextRunes {
+		docText = string(docRunes[:maxDocumentContextRunes])
+		truncated = true
+	}
+
+	var builder strings.Builder
+	builder.WriteString("Use the following extracted document text as context for the user's request.")
+	if truncated {
+		builder.WriteString(" The document text was truncated to fit the local model context window.")
+	}
+	builder.WriteString("\n\n<document_context>\n")
+	builder.WriteString(docText)
+	builder.WriteString("\n</document_context>\n\n")
+	builder.WriteString(prompt)
+	return builder.String()
 }

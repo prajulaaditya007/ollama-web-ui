@@ -4,7 +4,7 @@
 // Custom hooks     → useChatContext.ts
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Message, ChatSession, APIChatSession, APIMessage } from "./chatTypes";
+import type { Message, ChatSession, APIChatSession, APIMessage, SendMessageOptions } from "./chatTypes";
 import {
   SessionStateContext,
   MessageStateContext,
@@ -203,7 +203,16 @@ export const ChatProvider: React.FC<{
     }
   }, [selectedModel, userId]);
 
-  // 4. Delete session from DB safely
+  // 4. Abort current SSE/Stream generation
+  const stopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setLoading(false);
+  }, []);
+
+  // 5. Delete session from DB safely
   const deleteSession = useCallback(async (id: number, event?: React.MouseEvent) => {
     if (event) event.stopPropagation();
     if (userId === null) return;
@@ -239,19 +248,10 @@ export const ChatProvider: React.FC<{
     } catch (error) {
       console.error("Failed to delete session:", error);
     }
-  }, [currentSessionId, loading, sessions, userId]);
-
-  // 5. Abort current SSE/Stream generation
-  const stopGeneration = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    setLoading(false);
-  }, []);
+  }, [currentSessionId, loading, sessions, stopGeneration, userId]);
 
   // 6. Send message leveraging backend auto-session creation
-  const sendMessage = useCallback(async (promptText: string) => {
+  const sendMessage = useCallback(async (promptText: string, options: SendMessageOptions = {}) => {
     if (!promptText.trim() || loading || userId === null) return;
 
     setLoading(true);
@@ -275,6 +275,8 @@ export const ChatProvider: React.FC<{
           session_id: activeId,
           prompt: promptText,
           model_id: selectedModel,
+          images: options.images,
+          doc_text: options.docText,
         }),
         signal: controller.signal,
       });
